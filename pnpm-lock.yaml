@@ -32,6 +32,9 @@ importers:
       webmidi:
         specifier: ^3.1.12
         version: 3.1.12
+      ws:
+        specifier: ^8.18.2
+        version: 8.18.2
     devDependencies:
       '@tsconfig/node22':
         specifier: ^22.0.1
@@ -3035,6 +3038,18 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  ws@8.18.2:
+    resolution: {integrity: sha512-DMricUmwGZUVr++AEAe2uiVM7UoO9MAVZMDu05UQOaUII0lp+zOzLLU4Xqh/JvTqklB1T4uELaaPBKyjE1r4fQ==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
 
   xml-name-validator@4.0.0:
     resolution: {integrity: sha512-ICP2e+jsHvAj2E2lIHxa5tjXRlKDJo4IdvPvCXbXQGdzSfmSpNVyIKMvoZHjDY9DP0zV17iI85o90vRFXNccRw==}
@@ -6344,6 +6359,8 @@ snapshots:
       workbox-core: 7.3.0
 
   wrappy@1.0.2: {}
+
+  ws@8.18.2: {}
 
   xml-name-validator@4.0.0: {}
 

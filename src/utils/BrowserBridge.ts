@@ -1,8 +1,10 @@
 /**
  * 双浏览器桥接解决方案
- * Safari: 负责压感输入
- * Chrome: 负责 MIDI 输出
+ * Safari (主模式): 负责压感输入，发送数据
+ * Chrome (从模式): 负责 MIDI 输出，接收数据
  */
+
+export type BridgeMode = 'master' | 'slave' | 'auto'
 
 export interface PressureData {
   pressure: number
@@ -18,6 +20,7 @@ export interface MidiData {
 
 export interface StatusData {
   browser: 'safari' | 'chrome' | 'other'
+  mode: BridgeMode
   capabilities: {
     pressure: boolean
     midi: boolean
@@ -37,6 +40,7 @@ export class BrowserBridge {
   private maxReconnectAttempts = 5
   private reconnectInterval = 2000
   private messageCallbacks: Array<(message: BridgeMessage) => void> = []
+  private mode: BridgeMode = 'auto'
 
   constructor(private port: number = 8080) {}
 

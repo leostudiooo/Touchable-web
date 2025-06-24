@@ -44,11 +44,9 @@
             <button @click="showCapabilityTest" class="control-btn info">
               🔍 检测浏览器能力
             </button>
-            <button 
-              @click="bridgeConnected ? disconnectBridge() : connectBridge()" 
+            <button @click="bridgeConnected ? disconnectBridge() : connectBridge()"
               :class="['control-btn', bridgeConnected ? 'success' : 'warning']"
-              :disabled="bridgeStatus === 'connecting'"
-            >
+              :disabled="bridgeStatus === 'connecting'">
               {{ bridgeStatus === 'connecting' ? '🔄 连接中...' : bridgeConnected ? '🔗 断开桥接' : '🌉 连接桥接' }}
             </button>
             <button @click="resetAll" class="control-btn danger">
@@ -125,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { BrowserBridge, type BridgeMessage, type PressureData } from '@/utils/BrowserBridge'
 import { CapabilityDetector, type BrowserCapabilities } from '@/utils/CapabilityDetector'
 
@@ -172,8 +170,23 @@ const indicatorStyle = computed(() => ({
 // 方法
 const enablePressure = async () => {
   try {
+    console.log('🔍 开始检测浏览器能力...')
+
     // 首先检测浏览器能力
     browserCapabilities.value = await CapabilityDetector.detectCapabilities()
+
+    console.log('🔍 检测结果:', {
+      browser: browserCapabilities.value.browser,
+      pressure: browserCapabilities.value.pressure,
+      midi: browserCapabilities.value.midi,
+      userAgent: navigator.userAgent,
+      platform: navigator.platform
+    })
+
+    // 无论检测结果如何，都设置压感支持状态
+    pressureSupported.value = browserCapabilities.value.pressure
+
+    console.log('✅ 压感支持状态:', pressureSupported.value)
 
     if (!browserCapabilities.value.pressure && !browserCapabilities.value.midi) {
       // 如果两个功能都不支持，显示指导
@@ -181,19 +194,39 @@ const enablePressure = async () => {
 
       // 尝试连接桥接服务
       await connectBridge()
+
+      // 即使在桥接模式下，也要提供基本的交互功能
+      console.log('🔄 设置基本交互功能（桥接模式）')
+      setupFallbackEvents()
     } else if (!browserCapabilities.value.pressure || !browserCapabilities.value.midi) {
       // 如果只缺少一个功能，尝试桥接
       await connectBridge()
+
+      // 如果支持压感，初始化压感；否则使用备用方案
+      if (pressureSupported.value) {
+        console.log('🎯 初始化压感输入...')
+        await initializePressure()
+      } else {
+        console.log('🔄 设置基本交互功能（部分支持）')
+        setupFallbackEvents()
+      }
+
+      if (browserCapabilities.value.midi) {
+        midiEnabled.value = true
+        console.log('🎹 初始化 MIDI...')
+        await initializeMidi()
+      }
     } else {
       // 单浏览器方案
-      pressureSupported.value = browserCapabilities.value.pressure
       midiEnabled.value = browserCapabilities.value.midi
 
       if (pressureSupported.value) {
+        console.log('🎯 初始化压感输入...')
         await initializePressure()
       }
 
       if (midiEnabled.value) {
+        console.log('🎹 初始化 MIDI...')
         await initializeMidi()
       }
     }
@@ -204,15 +237,22 @@ const enablePressure = async () => {
 
 const setupBridgeListeners = () => {
   bridge.onMessage((message: BridgeMessage) => {
+    console.log('📩 收到桥接消息:', message.type, message.data)
+    
     switch (message.type) {
       case 'pressure':
         const pressureData = message.data as PressureData
+        console.log('🎯 更新压感数据:', pressureData)
         pressureValue.value = pressureData.pressure
         xPosition.value = pressureData.x
         yPosition.value = pressureData.y
+        
+        // 在接收端也更新轨迹（如果可视化激活）
+        addTrail()
         break
       case 'midi':
         // MIDI 数据已由另一个浏览器处理
+        console.log('🎹 收到 MIDI 数据:', message.data)
         break
       case 'status':
         console.log('📊 桥接状态更新:', message.data)
@@ -271,14 +311,14 @@ const connectBridge = async () => {
     const connected = await bridge.connect()
     bridgeConnected.value = connected
     bridgeStatus.value = connected ? 'connected' : 'disconnected'
-    
+
     if (connected) {
       console.log('🔗 已连接到双浏览器桥接服务')
       setupBridgeListeners()
     } else {
       console.log('❌ 无法连接到桥接服务，请确保桥接服务器正在运行')
     }
-    
+
     return connected
   } catch (error) {
     console.error('❌ 桥接连接失败:', error)
@@ -362,8 +402,64 @@ const initializePressure = async () => {
     }
   } catch (error) {
     console.warn('⚠️ Pressure.js 加载失败，使用备用方案:', error)
-    // 如果 Pressure.js 失败，使用原来的事件处理
+    // 如果 Pressure.js 失败，使用备用的鼠标/触摸事件
+    setupFallbackEvents()
   }
+}
+
+// 备用事件处理（当 Pressure.js 不可用时）
+const setupFallbackEvents = () => {
+  if (!touchArea.value) return
+
+  console.log('🔄 设置备用鼠标/触摸事件')
+
+  // 鼠标事件
+  touchArea.value.addEventListener('mousedown', (event: MouseEvent) => {
+    isPressed.value = true
+    pressureValue.value = 0.5 // 默认压力值
+    updatePosition(event)
+    addTrail()
+    sendMidiData()
+  })
+
+  touchArea.value.addEventListener('mousemove', (event: MouseEvent) => {
+    if (isPressed.value) {
+      updatePosition(event)
+      addTrail()
+      sendMidiData()
+    }
+  })
+
+  touchArea.value.addEventListener('mouseup', () => {
+    isPressed.value = false
+    pressureValue.value = 0
+    sendMidiData()
+  })
+
+  // 触摸事件
+  touchArea.value.addEventListener('touchstart', (event: TouchEvent) => {
+    isPressed.value = true
+    const touch = event.touches[0]
+    // 在支持的设备上尝试获取压感
+    pressureValue.value = touch.force || 0.5
+    updatePosition(event)
+    addTrail()
+    sendMidiData()
+  })
+
+  touchArea.value.addEventListener('touchmove', (event: TouchEvent) => {
+    const touch = event.touches[0]
+    pressureValue.value = touch.force || pressureValue.value
+    updatePosition(event)
+    addTrail()
+    sendMidiData()
+  })
+
+  touchArea.value.addEventListener('touchend', () => {
+    isPressed.value = false
+    pressureValue.value = 0
+    sendMidiData()
+  })
 }
 
 const addTrail = () => {
@@ -385,14 +481,25 @@ const addTrail = () => {
 }
 
 const sendMidiData = () => {
-  if (!midiEnabled.value) return
-
-  // 这里可以添加实际的 MIDI 发送逻辑
-  console.log('🎹 MIDI:', {
-    pressure: Math.round(pressureValue.value * 127),
-    x: Math.round(xPosition.value * 127),
-    y: Math.round(yPosition.value * 127)
-  })
+  // 发送桥接数据（如果已连接）
+  if (bridgeConnected.value) {
+    console.log('📡 发送桥接数据:', { 
+      pressure: pressureValue.value, 
+      x: xPosition.value, 
+      y: yPosition.value 
+    })
+    bridge.sendPressureData(pressureValue.value, xPosition.value, yPosition.value)
+  }
+  
+  // 发送 MIDI 数据（如果支持）
+  if (midiEnabled.value) {
+    // 这里可以添加实际的 MIDI 发送逻辑
+    console.log('🎹 MIDI:', {
+      pressure: Math.round(pressureValue.value * 127),
+      x: Math.round(xPosition.value * 127),
+      y: Math.round(yPosition.value * 127)
+    })
+  }
 }
 
 // 生命周期
@@ -638,7 +745,6 @@ onUnmounted(() => {
   border-radius: 50%;
   pointer-events: none;
   transform-origin: center;
-  transition: transform 0.1s ease;
 }
 
 .touch-trails {
@@ -704,7 +810,7 @@ onUnmounted(() => {
 .param-fill {
   height: 100%;
   background: linear-gradient(90deg, #4a90e2, #27ae60);
-  transition: width 0.1s ease;
+  /* 移除过渡效果以获得即时响应 */
 }
 
 .param-value {
