@@ -52,32 +52,15 @@
             <div class="mapping-item">
               <div class="mapping-config">
                 <label>
-                  <input
-                    type="checkbox"
-                    v-model="midiMappings.pressure.enabled"
-                    class="mapping-checkbox"
-                    @change="syncMidiSettings"
-                  />
+                  <input type="checkbox" v-model="midiMappings.pressure.enabled" class="mapping-checkbox"
+                    @change="syncMidiSettings" />
                   压力 → CC
                 </label>
                 <div class="mapping-input-row">
-                  <input
-                    type="number"
-                    v-model="midiMappings.pressure.cc"
-                    min="0"
-                    max="127"
-                    class="cc-input"
-                    :disabled="!midiMappings.pressure.enabled"
-                    @change="syncMidiSettings"
-                  />
-                  <input
-                    type="text"
-                    v-model="midiMappings.pressure.name"
-                    class="name-input"
-                    :disabled="!midiMappings.pressure.enabled"
-                    placeholder="名称"
-                    @change="syncMidiSettings"
-                  />
+                  <input type="number" v-model="midiMappings.pressure.cc" min="0" max="127" class="cc-input"
+                    :disabled="!midiMappings.pressure.enabled" @change="syncMidiSettings" />
+                  <input type="text" v-model="midiMappings.pressure.name" class="name-input"
+                    :disabled="!midiMappings.pressure.enabled" placeholder="名称" @change="syncMidiSettings" />
                 </div>
               </div>
               <span class="mapping-value">{{ Math.round(pressureValue * 127) }}</span>
@@ -86,32 +69,15 @@
             <div class="mapping-item">
               <div class="mapping-config">
                 <label>
-                  <input
-                    type="checkbox"
-                    v-model="midiMappings.x.enabled"
-                    class="mapping-checkbox"
-                    @change="syncMidiSettings"
-                  />
+                  <input type="checkbox" v-model="midiMappings.x.enabled" class="mapping-checkbox"
+                    @change="syncMidiSettings" />
                   X 坐标 → CC
                 </label>
                 <div class="mapping-input-row">
-                  <input
-                    type="number"
-                    v-model="midiMappings.x.cc"
-                    min="0"
-                    max="127"
-                    class="cc-input"
-                    :disabled="!midiMappings.x.enabled"
-                    @change="syncMidiSettings"
-                  />
-                  <input
-                    type="text"
-                    v-model="midiMappings.x.name"
-                    class="name-input"
-                    :disabled="!midiMappings.x.enabled"
-                    placeholder="名称"
-                    @change="syncMidiSettings"
-                  />
+                  <input type="number" v-model="midiMappings.x.cc" min="0" max="127" class="cc-input"
+                    :disabled="!midiMappings.x.enabled" @change="syncMidiSettings" />
+                  <input type="text" v-model="midiMappings.x.name" class="name-input"
+                    :disabled="!midiMappings.x.enabled" placeholder="名称" @change="syncMidiSettings" />
                 </div>
               </div>
               <span class="mapping-value">{{ Math.round(xPosition * 127) }}</span>
@@ -120,32 +86,15 @@
             <div class="mapping-item">
               <div class="mapping-config">
                 <label>
-                  <input
-                    type="checkbox"
-                    v-model="midiMappings.y.enabled"
-                    class="mapping-checkbox"
-                    @change="syncMidiSettings"
-                  />
+                  <input type="checkbox" v-model="midiMappings.y.enabled" class="mapping-checkbox"
+                    @change="syncMidiSettings" />
                   Y 坐标 → CC
                 </label>
                 <div class="mapping-input-row">
-                  <input
-                    type="number"
-                    v-model="midiMappings.y.cc"
-                    min="0"
-                    max="127"
-                    class="cc-input"
-                    :disabled="!midiMappings.y.enabled"
-                    @change="syncMidiSettings"
-                  />
-                  <input
-                    type="text"
-                    v-model="midiMappings.y.name"
-                    class="name-input"
-                    :disabled="!midiMappings.y.enabled"
-                    placeholder="名称"
-                    @change="syncMidiSettings"
-                  />
+                  <input type="number" v-model="midiMappings.y.cc" min="0" max="127" class="cc-input"
+                    :disabled="!midiMappings.y.enabled" @change="syncMidiSettings" />
+                  <input type="text" v-model="midiMappings.y.name" class="name-input"
+                    :disabled="!midiMappings.y.enabled" placeholder="名称" @change="syncMidiSettings" />
                 </div>
               </div>
               <span class="mapping-value">{{ Math.round(yPosition * 127) }}</span>
@@ -153,11 +102,7 @@
 
             <div class="midi-channel">
               <label>MIDI 通道:</label>
-              <select
-                v-model="midiMappings.pressure.channel"
-                class="channel-select"
-                @change="updateAllChannels"
-              >
+              <select v-model="midiMappings.pressure.channel" class="channel-select" @change="updateAllChannels">
                 <option v-for="n in 16" :key="n - 1" :value="n - 1">{{ n }}</option>
               </select>
             </div>
@@ -174,11 +119,9 @@
               连接 MIDI 设备
             </button>
             <button @click="showCapabilityTest" class="control-btn info">🔍 检测浏览器能力</button>
-            <button
-              @click="bridgeConnected ? disconnectBridge() : connectBridge()"
+            <button @click="bridgeConnected ? disconnectBridge() : connectBridge()"
               :class="['control-btn', bridgeConnected ? 'success' : 'warning']"
-              :disabled="bridgeStatus === 'connecting'"
-            >
+              :disabled="bridgeStatus === 'connecting'">
               {{
                 bridgeStatus === 'connecting'
                   ? '🔄 连接中...'
@@ -313,11 +256,11 @@ const processPressureValue = (rawPressure: number): number => {
     // 屏蔽模式：忽略 50% 以上的压感，将 0-0.5 映射到 0-1
     const clampedPressure = Math.min(rawPressure, 0.5)
     const mappedPressure = clampedPressure * 2 // 将 0-0.5 映射到 0-1
-    
+
     if (rawPressure > 0.5) {
       console.log(`🚫 Force Touch 屏蔽: 原始压力 ${rawPressure.toFixed(2)} → 映射压力 ${mappedPressure.toFixed(2)}`)
     }
-    
+
     return mappedPressure
   }
   return rawPressure
@@ -532,11 +475,6 @@ const showCapabilityTest = async () => {
   } catch (error) {
     console.error('能力检测失败:', error)
   }
-}
-
-const toggleVisualization = () => {
-  visualizationActive.value = !visualizationActive.value
-  console.log('📊 可视化', visualizationActive.value ? '已启动' : '已暂停')
 }
 
 // 触控事件处理
@@ -1038,9 +976,6 @@ onUnmounted(() => {
 }
 
 .viz-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 1rem;
   background: var(--color-background-soft);
   border-bottom: 1px solid var(--color-border);
@@ -1049,20 +984,6 @@ onUnmounted(() => {
 .viz-header h2 {
   margin: 0;
   font-size: 1.1rem;
-}
-
-.viz-btn {
-  padding: 0.5rem 1rem;
-  background: #27ae60;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.viz-btn:hover {
-  background: #219a52;
 }
 
 /* 触控区域 */
