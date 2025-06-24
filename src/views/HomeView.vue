@@ -288,21 +288,19 @@ const enablePressure = async () => {
     console.log('✅ 压感支持状态:', pressureSupported.value)
     console.log('🔧 桥接模式:', bridge.bridgeMode)
 
+    // 无论浏览器能力如何，都尝试连接桥接服务
+    console.log('🌉 自动尝试连接桥接服务...')
+    await connectBridge()
+
     if (!browserCapabilities.value.pressure && !browserCapabilities.value.midi) {
       // 如果两个功能都不支持，显示指导
       CapabilityDetector.showBrowserGuidance(browserCapabilities.value)
-
-      // 尝试连接桥接服务
-      await connectBridge()
 
       // 即使在桥接模式下，也要提供基本的交互功能
       console.log('🔄 设置基本交互功能（桥接模式）')
       setupFallbackEvents()
     } else if (!browserCapabilities.value.pressure || !browserCapabilities.value.midi) {
-      // 如果只缺少一个功能，尝试桥接
-      await connectBridge()
-
-      // 如果支持压感，初始化压感；否则使用备用方案
+      // 如果只缺少一个功能，初始化支持的功能
       if (pressureSupported.value) {
         console.log('🎯 初始化压感输入...')
         await initializePressure()
@@ -317,7 +315,7 @@ const enablePressure = async () => {
         await initializeMidi()
       }
     } else {
-      // 单浏览器方案
+      // 全功能浏览器：初始化所有功能
       midiEnabled.value = browserCapabilities.value.midi
 
       if (pressureSupported.value) {
