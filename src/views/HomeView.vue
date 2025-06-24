@@ -107,7 +107,7 @@
               </select>
             </div>
 
-            <div class="midi-device" v-if="midiOutputs.length > 0">
+            <div class="midi-device">
               <label>MIDI 设备:</label>
               <select v-model="selectedMidiOutput" class="device-select" @change="onMidiDeviceChange">
                 <option value="">选择 MIDI 设备</option>
