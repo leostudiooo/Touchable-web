@@ -106,6 +106,16 @@
                 <option v-for="n in 16" :key="n - 1" :value="n - 1">{{ n }}</option>
               </select>
             </div>
+
+            <div class="midi-device" v-if="midiOutputs.length > 0">
+              <label>MIDI 设备:</label>
+              <select v-model="selectedMidiOutput" class="device-select" @change="onMidiDeviceChange">
+                <option value="">选择 MIDI 设备</option>
+                <option v-for="output in midiOutputs" :key="output.id" :value="output.id">
+                  {{ output.name || `设备 ${output.id}` }}
+                </option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -192,6 +202,11 @@ const bridgeConnected = ref(false)
 const browserCapabilities = ref<BrowserCapabilities | null>(null)
 const forceTouchBlocked = ref(false) // Force Touch 屏蔽状态
 
+// MIDI 设备管理
+const midiAccess = ref<MIDIAccess | null>(null)
+const midiOutputs = ref<MIDIOutput[]>([])
+const selectedMidiOutput = ref<string>('')
+
 // 浏览器桥接
 const bridge = new BrowserBridge()
 const bridgeStatus = ref<'disconnected' | 'connecting' | 'connected' | 'reconnecting'>(
@@ -237,6 +252,26 @@ const updateAllChannels = () => {
   midiMappings.value.x.channel = channel
   midiMappings.value.y.channel = channel
   syncMidiSettings()
+}
+
+// MIDI 设备管理
+const updateMidiDevices = (access: MIDIAccess) => {
+  midiAccess.value = access
+  midiOutputs.value = Array.from(access.outputs.values())
+
+  // 如果还没有选择设备且有可用设备，自动选择第一个
+  if (!selectedMidiOutput.value && midiOutputs.value.length > 0) {
+    selectedMidiOutput.value = midiOutputs.value[0].id
+  }
+
+  console.log('🎹 发现 MIDI 设备:', midiOutputs.value.map(output => ({
+    id: output.id,
+    name: output.name
+  })))
+}
+
+const onMidiDeviceChange = () => {
+  console.log('🎹 切换 MIDI 设备:', selectedMidiOutput.value)
 }
 
 // DOM 引用
@@ -385,10 +420,11 @@ const setupBridgeListeners = () => {
 const initializeMidi = async () => {
   try {
     if (navigator.requestMIDIAccess) {
-      const midiAccess = await navigator.requestMIDIAccess()
+      const access = await navigator.requestMIDIAccess()
       midiEnabled.value = true
+      updateMidiDevices(access)
       console.log('✅ MIDI 设备已连接')
-      return midiAccess
+      return access
     }
   } catch (error) {
     console.error('❌ MIDI 连接失败:', error)
@@ -399,15 +435,18 @@ const initializeMidi = async () => {
 const enableMidi = async () => {
   try {
     if (navigator.requestMIDIAccess) {
-      const midiAccess = await navigator.requestMIDIAccess()
+      const access = await navigator.requestMIDIAccess()
       midiEnabled.value = true
+      updateMidiDevices(access)
       console.log('✅ MIDI 设备已连接')
 
       // 发送测试 MIDI 消息
-      for (const output of midiAccess.outputs.values()) {
-        // CC 1 (调制轮) = 压力
-        output.send([0xb0, 1, Math.round(pressureValue.value * 127)])
-        break
+      if (selectedMidiOutput.value) {
+        const output = midiOutputs.value.find(o => o.id === selectedMidiOutput.value)
+        if (output) {
+          // CC 1 (调制轮) = 压力
+          output.send([0xb0, 1, Math.round(pressureValue.value * 127)])
+        }
       }
     } else {
       console.log('❌ 浏览器不支持 Web MIDI API')
@@ -601,13 +640,33 @@ const sendMidiData = () => {
     bridge.sendPressureData(pressureValue.value, xPosition.value, yPosition.value)
   }
 
-  // 发送 MIDI 数据（如果支持）
-  if (midiEnabled.value) {
-    console.log('🎹 发送 MIDI 数据:', {
-      pressure: Math.round(pressureValue.value * 127),
-      x: Math.round(xPosition.value * 127),
-      y: Math.round(yPosition.value * 127),
-    })
+  // 发送 MIDI 数据（如果支持且有选中的设备）
+  if (midiEnabled.value && selectedMidiOutput.value) {
+    const selectedOutput = midiOutputs.value.find(output => output.id === selectedMidiOutput.value)
+
+    if (selectedOutput) {
+      console.log('🎹 发送 MIDI 数据:', {
+        device: selectedOutput.name,
+        pressure: Math.round(pressureValue.value * 127),
+        x: Math.round(xPosition.value * 127),
+        y: Math.round(yPosition.value * 127),
+      })
+
+      // 发送 MIDI CC 消息
+      const channel = midiMappings.value.pressure.channel
+
+      if (midiMappings.value.pressure.enabled) {
+        selectedOutput.send([0xB0 + channel, midiMappings.value.pressure.cc, Math.round(pressureValue.value * 127)])
+      }
+
+      if (midiMappings.value.x.enabled) {
+        selectedOutput.send([0xB0 + channel, midiMappings.value.x.cc, Math.round(xPosition.value * 127)])
+      }
+
+      if (midiMappings.value.y.enabled) {
+        selectedOutput.send([0xB0 + channel, midiMappings.value.y.cc, Math.round(yPosition.value * 127)])
+      }
+    }
 
     // 如果是桥接从模式，也通过桥接发送 MIDI 确认
     if (bridgeConnected.value && bridge.isSlave) {
@@ -918,7 +977,8 @@ onUnmounted(() => {
   font-size: 0.9rem;
 }
 
-.channel-select {
+.channel-select,
+.device-select {
   padding: 0.5rem;
   border: 1px solid var(--color-border);
   border-radius: 4px;
@@ -929,14 +989,38 @@ onUnmounted(() => {
   transition: border-color 0.2s ease;
 }
 
-.channel-select:focus {
+.channel-select:focus,
+.device-select:focus {
   outline: none;
   border-color: #4a90e2;
   box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
 }
 
-.channel-select:hover {
+.channel-select:hover,
+.device-select:hover {
   border-color: #4a90e2;
+}
+
+.midi-device {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.midi-device label {
+  font-weight: 500;
+  color: var(--color-heading);
+  font-size: 0.9rem;
+}
+
+.device-select {
+  flex: 1;
+  min-width: 120px;
 }
 
 /* Force Touch 切换开关 */
