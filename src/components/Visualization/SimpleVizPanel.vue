@@ -4,8 +4,13 @@
 
     <div class="interactive-area">
       <h3>交互测试区域</h3>
-      <div class="test-surface" @mousemove="handleMouseMove" @mousedown="handleMouseDown" @mouseup="handleMouseUp"
-        @mouseleave="handleMouseLeave">
+      <div
+        class="test-surface"
+        @mousemove="handleMouseMove"
+        @mousedown="handleMouseDown"
+        @mouseup="handleMouseUp"
+        @mouseleave="handleMouseLeave"
+      >
         <div class="surface-info">
           <div>坐标: ({{ mouseX.toFixed(2) }}, {{ mouseY.toFixed(2) }})</div>
           <div>按下状态: {{ isPressed ? '是' : '否' }}</div>
@@ -17,11 +22,14 @@
     <div class="visualization-area">
       <h3>压力可视化</h3>
       <div class="pressure-container">
-        <div class="pressure-circle" :style="{
-          width: circleSize + 'px',
-          height: circleSize + 'px',
-          opacity: circleOpacity
-        }"></div>
+        <div
+          class="pressure-circle"
+          :style="{
+            width: circleSize + 'px',
+            height: circleSize + 'px',
+            opacity: circleOpacity,
+          }"
+        ></div>
         <div class="pressure-info">
           <div>圆圈大小: {{ circleSize }}px</div>
           <div>不透明度: {{ circleOpacity.toFixed(2) }}</div>
@@ -35,7 +43,7 @@
         <div class="data-item">
           <span class="data-label">X 轴</span>
           <div class="data-bar">
-            <div class="data-fill" :style="{ width: (mouseX * 100) + '%' }"></div>
+            <div class="data-fill" :style="{ width: mouseX * 100 + '%' }"></div>
           </div>
           <span class="data-value">{{ (mouseX * 127).toFixed(0) }}</span>
         </div>
@@ -43,7 +51,7 @@
         <div class="data-item">
           <span class="data-label">Y 轴</span>
           <div class="data-bar">
-            <div class="data-fill" :style="{ width: (mouseY * 100) + '%' }"></div>
+            <div class="data-fill" :style="{ width: mouseY * 100 + '%' }"></div>
           </div>
           <span class="data-value">{{ (mouseY * 127).toFixed(0) }}</span>
         </div>
@@ -51,7 +59,7 @@
         <div class="data-item">
           <span class="data-label">压力</span>
           <div class="data-bar">
-            <div class="data-fill" :style="{ width: (pressure * 100) + '%' }"></div>
+            <div class="data-fill" :style="{ width: pressure * 100 + '%' }"></div>
           </div>
           <span class="data-value">{{ (pressure * 127).toFixed(0) }}</span>
         </div>
@@ -76,7 +84,7 @@ const mouseX = ref(0)
 const mouseY = ref(0)
 const isPressed = ref(false)
 const pressure = ref(0)
-const recentMessages = ref<Array<{ cc: number, value: number }>>([])
+const recentMessages = ref<Array<{ cc: number; value: number }>>([])
 
 const circleSize = computed(() => {
   return Math.max(30, 30 + pressure.value * 100)
@@ -124,7 +132,7 @@ watch([mouseX, mouseY, pressure], () => {
     const messages = [
       { cc: 1, value: Math.round(pressure.value * 127) },
       { cc: 2, value: Math.round(mouseX.value * 127) },
-      { cc: 3, value: Math.round(mouseY.value * 127) }
+      { cc: 3, value: Math.round(mouseY.value * 127) },
     ]
 
     // 只保留最近的几条消息

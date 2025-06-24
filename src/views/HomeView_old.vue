@@ -190,7 +190,7 @@ console.log('🚀 HomeView 组件已加载')
     width: 480px;
     min-width: 400px;
   }
-  
+
   .app-title {
     font-size: 2.5rem;
   }

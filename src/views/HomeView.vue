@@ -40,15 +40,32 @@
             <div class="mapping-item">
               <div class="mapping-config">
                 <label>
-                  <input type="checkbox" v-model="midiMappings.pressure.enabled" class="mapping-checkbox"
-                    @change="syncMidiSettings">
+                  <input
+                    type="checkbox"
+                    v-model="midiMappings.pressure.enabled"
+                    class="mapping-checkbox"
+                    @change="syncMidiSettings"
+                  />
                   压力 → CC
                 </label>
                 <div class="mapping-input-row">
-                  <input type="number" v-model="midiMappings.pressure.cc" min="0" max="127" class="cc-input"
-                    :disabled="!midiMappings.pressure.enabled" @change="syncMidiSettings">
-                  <input type="text" v-model="midiMappings.pressure.name" class="name-input"
-                    :disabled="!midiMappings.pressure.enabled" placeholder="名称" @change="syncMidiSettings">
+                  <input
+                    type="number"
+                    v-model="midiMappings.pressure.cc"
+                    min="0"
+                    max="127"
+                    class="cc-input"
+                    :disabled="!midiMappings.pressure.enabled"
+                    @change="syncMidiSettings"
+                  />
+                  <input
+                    type="text"
+                    v-model="midiMappings.pressure.name"
+                    class="name-input"
+                    :disabled="!midiMappings.pressure.enabled"
+                    placeholder="名称"
+                    @change="syncMidiSettings"
+                  />
                 </div>
               </div>
               <span class="mapping-value">{{ Math.round(pressureValue * 127) }}</span>
@@ -57,15 +74,32 @@
             <div class="mapping-item">
               <div class="mapping-config">
                 <label>
-                  <input type="checkbox" v-model="midiMappings.x.enabled" class="mapping-checkbox"
-                    @change="syncMidiSettings">
+                  <input
+                    type="checkbox"
+                    v-model="midiMappings.x.enabled"
+                    class="mapping-checkbox"
+                    @change="syncMidiSettings"
+                  />
                   X 坐标 → CC
                 </label>
                 <div class="mapping-input-row">
-                  <input type="number" v-model="midiMappings.x.cc" min="0" max="127" class="cc-input"
-                    :disabled="!midiMappings.x.enabled" @change="syncMidiSettings">
-                  <input type="text" v-model="midiMappings.x.name" class="name-input"
-                    :disabled="!midiMappings.x.enabled" placeholder="名称" @change="syncMidiSettings">
+                  <input
+                    type="number"
+                    v-model="midiMappings.x.cc"
+                    min="0"
+                    max="127"
+                    class="cc-input"
+                    :disabled="!midiMappings.x.enabled"
+                    @change="syncMidiSettings"
+                  />
+                  <input
+                    type="text"
+                    v-model="midiMappings.x.name"
+                    class="name-input"
+                    :disabled="!midiMappings.x.enabled"
+                    placeholder="名称"
+                    @change="syncMidiSettings"
+                  />
                 </div>
               </div>
               <span class="mapping-value">{{ Math.round(xPosition * 127) }}</span>
@@ -74,15 +108,32 @@
             <div class="mapping-item">
               <div class="mapping-config">
                 <label>
-                  <input type="checkbox" v-model="midiMappings.y.enabled" class="mapping-checkbox"
-                    @change="syncMidiSettings">
+                  <input
+                    type="checkbox"
+                    v-model="midiMappings.y.enabled"
+                    class="mapping-checkbox"
+                    @change="syncMidiSettings"
+                  />
                   Y 坐标 → CC
                 </label>
                 <div class="mapping-input-row">
-                  <input type="number" v-model="midiMappings.y.cc" min="0" max="127" class="cc-input"
-                    :disabled="!midiMappings.y.enabled" @change="syncMidiSettings">
-                  <input type="text" v-model="midiMappings.y.name" class="name-input"
-                    :disabled="!midiMappings.y.enabled" placeholder="名称" @change="syncMidiSettings">
+                  <input
+                    type="number"
+                    v-model="midiMappings.y.cc"
+                    min="0"
+                    max="127"
+                    class="cc-input"
+                    :disabled="!midiMappings.y.enabled"
+                    @change="syncMidiSettings"
+                  />
+                  <input
+                    type="text"
+                    v-model="midiMappings.y.name"
+                    class="name-input"
+                    :disabled="!midiMappings.y.enabled"
+                    placeholder="名称"
+                    @change="syncMidiSettings"
+                  />
                 </div>
               </div>
               <span class="mapping-value">{{ Math.round(yPosition * 127) }}</span>
@@ -90,7 +141,11 @@
 
             <div class="midi-channel">
               <label>MIDI 通道:</label>
-              <select v-model="midiMappings.pressure.channel" class="channel-select" @change="updateAllChannels">
+              <select
+                v-model="midiMappings.pressure.channel"
+                class="channel-select"
+                @change="updateAllChannels"
+              >
                 <option v-for="n in 16" :key="n - 1" :value="n - 1">{{ n }}</option>
               </select>
             </div>
@@ -106,17 +161,21 @@
             <button @click="enableMidi" :disabled="midiEnabled" class="control-btn">
               连接 MIDI 设备
             </button>
-            <button @click="showCapabilityTest" class="control-btn info">
-              🔍 检测浏览器能力
-            </button>
-            <button @click="bridgeConnected ? disconnectBridge() : connectBridge()"
+            <button @click="showCapabilityTest" class="control-btn info">🔍 检测浏览器能力</button>
+            <button
+              @click="bridgeConnected ? disconnectBridge() : connectBridge()"
               :class="['control-btn', bridgeConnected ? 'success' : 'warning']"
-              :disabled="bridgeStatus === 'connecting'">
-              {{ bridgeStatus === 'connecting' ? '🔄 连接中...' : bridgeConnected ? '🔗 断开桥接' : '🌉 连接桥接' }}
+              :disabled="bridgeStatus === 'connecting'"
+            >
+              {{
+                bridgeStatus === 'connecting'
+                  ? '🔄 连接中...'
+                  : bridgeConnected
+                    ? '🔗 断开桥接'
+                    : '🌉 连接桥接'
+              }}
             </button>
-            <button @click="resetAll" class="control-btn danger">
-              重置所有设置
-            </button>
+            <button @click="resetAll" class="control-btn danger">重置所有设置</button>
           </div>
         </div>
       </aside>
@@ -168,7 +227,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { BrowserBridge, type BridgeMessage, type PressureData, type MidiSettings } from '@/utils/BrowserBridge'
+import {
+  BrowserBridge,
+  type BridgeMessage,
+  type PressureData,
+  type MidiSettings,
+} from '@/utils/BrowserBridge'
 import { CapabilityDetector, type BrowserCapabilities } from '@/utils/CapabilityDetector'
 
 // 状态管理
@@ -180,7 +244,9 @@ const browserCapabilities = ref<BrowserCapabilities | null>(null)
 
 // 浏览器桥接
 const bridge = new BrowserBridge()
-const bridgeStatus = ref<'disconnected' | 'connecting' | 'connected' | 'reconnecting'>('disconnected')
+const bridgeStatus = ref<'disconnected' | 'connecting' | 'connected' | 'reconnecting'>(
+  'disconnected',
+)
 
 // 输入数据
 const pressureValue = ref(0)
@@ -227,7 +293,7 @@ const indicatorStyle = computed(() => ({
   left: `${xPosition.value * 100}%`,
   top: `${yPosition.value * 100}%`,
   opacity: pressureValue.value,
-  transform: `translate(-50%, -50%) scale(${0.5 + pressureValue.value * 0.5})`
+  transform: `translate(-50%, -50%) scale(${0.5 + pressureValue.value * 0.5})`,
 }))
 
 // 方法
@@ -243,7 +309,7 @@ const enablePressure = async () => {
       pressure: browserCapabilities.value.pressure,
       midi: browserCapabilities.value.midi,
       userAgent: navigator.userAgent,
-      platform: navigator.platform
+      platform: navigator.platform,
     })
 
     // 无论检测结果如何，都设置压感支持状态
@@ -363,7 +429,7 @@ const enableMidi = async () => {
       // 发送测试 MIDI 消息
       for (const output of midiAccess.outputs.values()) {
         // CC 1 (调制轮) = 压力
-        output.send([0xB0, 1, Math.round(pressureValue.value * 127)])
+        output.send([0xb0, 1, Math.round(pressureValue.value * 127)])
         break
       }
     } else {
@@ -463,26 +529,30 @@ const initializePressure = async () => {
     const Pressure = await import('pressure')
 
     if (touchArea.value) {
-      Pressure.set(touchArea.value, {
-        start: (event: MouseEvent | TouchEvent) => {
-          isPressed.value = true
-          updatePosition(event)
-          sendMidiData()
+      Pressure.set(
+        touchArea.value,
+        {
+          start: (event: MouseEvent | TouchEvent) => {
+            isPressed.value = true
+            updatePosition(event)
+            sendMidiData()
+          },
+          change: (force: number, event: MouseEvent | TouchEvent) => {
+            pressureValue.value = force // 使用 Pressure.js 的真实压感值
+            updatePosition(event)
+            sendMidiData()
+          },
+          end: () => {
+            isPressed.value = false
+            pressureValue.value = 0
+            sendMidiData()
+          },
         },
-        change: (force: number, event: MouseEvent | TouchEvent) => {
-          pressureValue.value = force // 使用 Pressure.js 的真实压感值
-          updatePosition(event)
-          sendMidiData()
+        {
+          preventDefault: false,
+          preventSelect: false,
         },
-        end: () => {
-          isPressed.value = false
-          pressureValue.value = 0
-          sendMidiData()
-        }
-      }, {
-        preventDefault: false,
-        preventSelect: false
-      })
+      )
 
       console.log('✅ Pressure.js 已集成')
     }
@@ -550,7 +620,7 @@ const sendMidiData = () => {
     console.log('📡 [主模式] 发送桥接数据:', {
       pressure: pressureValue.value,
       x: xPosition.value,
-      y: yPosition.value
+      y: yPosition.value,
     })
     bridge.sendPressureData(pressureValue.value, xPosition.value, yPosition.value)
   }
@@ -560,7 +630,7 @@ const sendMidiData = () => {
     console.log('🎹 发送 MIDI 数据:', {
       pressure: Math.round(pressureValue.value * 127),
       x: Math.round(xPosition.value * 127),
-      y: Math.round(yPosition.value * 127)
+      y: Math.round(yPosition.value * 127),
     })
 
     // 如果是桥接从模式，也通过桥接发送 MIDI 确认
@@ -929,12 +999,17 @@ onUnmounted(() => {
 .touch-area {
   flex: 1;
   position: relative;
-  background: linear-gradient(45deg, var(--color-background-soft) 25%, transparent 25%),
+  background:
+    linear-gradient(45deg, var(--color-background-soft) 25%, transparent 25%),
     linear-gradient(-45deg, var(--color-background-soft) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, var(--color-background-soft) 75%),
     linear-gradient(-45deg, transparent 75%, var(--color-background-soft) 75%);
   background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0px;
   cursor: crosshair;
   overflow: hidden;
 }

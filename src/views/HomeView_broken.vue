@@ -50,17 +50,21 @@
             <button @click="enableMidi" :disabled="midiEnabled" class="control-btn">
               连接 MIDI 设备
             </button>
-            <button @click="showCapabilityTest" class="control-btn info">
-              🔍 检测浏览器能力
-            </button>
-            <button @click="bridgeConnected ? disconnectBridge() : connectBridge()"
+            <button @click="showCapabilityTest" class="control-btn info">🔍 检测浏览器能力</button>
+            <button
+              @click="bridgeConnected ? disconnectBridge() : connectBridge()"
               :class="['control-btn', bridgeConnected ? 'success' : 'warning']"
-              :disabled="bridgeStatus === 'connecting'">
-              {{ bridgeStatus === 'connecting' ? '🔄 连接中...' : bridgeConnected ? '🔗 断开桥接' : '🌉 连接桥接' }}
+              :disabled="bridgeStatus === 'connecting'"
+            >
+              {{
+                bridgeStatus === 'connecting'
+                  ? '🔄 连接中...'
+                  : bridgeConnected
+                    ? '🔗 断开桥接'
+                    : '🌉 连接桥接'
+              }}
             </button>
-            <button @click="resetAll" class="control-btn danger">
-              重置所有设置
-            </button>
+            <button @click="resetAll" class="control-btn danger">重置所有设置</button>
           </div>
         </div>
 
@@ -98,7 +102,12 @@
         <div ref="touchArea" class="touch-area">
           <div class="touch-indicator" :style="indicatorStyle"></div>
           <div class="touch-trails">
-            <div v-for="(trail, index) in touchTrails" :key="index" class="trail-point" :style="trail.style"></div>
+            <div
+              v-for="(trail, index) in touchTrails"
+              :key="index"
+              class="trail-point"
+              :style="trail.style"
+            ></div>
           </div>
         </div>
 
@@ -145,7 +154,9 @@ const browserCapabilities = ref<BrowserCapabilities | null>(null)
 
 // 浏览器桥接
 const bridge = new BrowserBridge()
-const bridgeStatus = ref<'disconnected' | 'connecting' | 'connected' | 'reconnecting'>('disconnected')
+const bridgeStatus = ref<'disconnected' | 'connecting' | 'connected' | 'reconnecting'>(
+  'disconnected',
+)
 
 // 输入数据
 const pressureValue = ref(0)
@@ -173,7 +184,7 @@ const touchArea = ref<HTMLElement>()
 const indicatorStyle = computed(() => ({
   transform: `translate(${xPosition.value * 100}%, ${yPosition.value * 100}%)`,
   opacity: pressureValue.value,
-  scale: `${0.5 + pressureValue.value * 0.5}`
+  scale: `${0.5 + pressureValue.value * 0.5}`,
 }))
 
 // 方法
@@ -253,7 +264,7 @@ const enableMidi = async () => {
       // 发送测试 MIDI 消息
       for (const output of midiAccess.outputs.values()) {
         // CC 1 (调制轮) = 压力
-        output.send([0xB0, 1, Math.round(pressureValue.value * 127)])
+        output.send([0xb0, 1, Math.round(pressureValue.value * 127)])
         break
       }
     } else {
@@ -343,28 +354,32 @@ const initializePressure = async () => {
     const Pressure = await import('pressure')
 
     if (touchArea.value) {
-      Pressure.set(touchArea.value, {
-        start: (event: MouseEvent | TouchEvent) => {
-          isPressed.value = true
-          updatePosition(event)
-          addTrail()
-          sendMidiData()
+      Pressure.set(
+        touchArea.value,
+        {
+          start: (event: MouseEvent | TouchEvent) => {
+            isPressed.value = true
+            updatePosition(event)
+            addTrail()
+            sendMidiData()
+          },
+          change: (force: number, event: MouseEvent | TouchEvent) => {
+            pressureValue.value = force // 使用 Pressure.js 的真实压感值
+            updatePosition(event)
+            addTrail()
+            sendMidiData()
+          },
+          end: () => {
+            isPressed.value = false
+            pressureValue.value = 0
+            sendMidiData()
+          },
         },
-        change: (force: number, event: MouseEvent | TouchEvent) => {
-          pressureValue.value = force // 使用 Pressure.js 的真实压感值
-          updatePosition(event)
-          addTrail()
-          sendMidiData()
+        {
+          preventDefault: false,
+          preventSelect: false,
         },
-        end: () => {
-          isPressed.value = false
-          pressureValue.value = 0
-          sendMidiData()
-        }
-      }, {
-        preventDefault: false,
-        preventSelect: false
-      })
+      )
 
       console.log('✅ Pressure.js 已集成')
     }
@@ -383,7 +398,7 @@ const addTrail = () => {
       left: `${xPosition.value * 100}%`,
       top: `${yPosition.value * 100}%`,
       opacity: pressureValue.value,
-    }
+    },
   })
 
   // 限制轨迹数量
@@ -399,7 +414,7 @@ const sendMidiData = () => {
   console.log('🎹 MIDI:', {
     pressure: Math.round(pressureValue.value * 127),
     x: Math.round(xPosition.value * 127),
-    y: Math.round(yPosition.value * 127)
+    y: Math.round(yPosition.value * 127),
   })
 }
 
@@ -628,12 +643,17 @@ onUnmounted(() => {
 .touch-area {
   flex: 1;
   position: relative;
-  background: linear-gradient(45deg, var(--color-background-soft) 25%, transparent 25%),
+  background:
+    linear-gradient(45deg, var(--color-background-soft) 25%, transparent 25%),
     linear-gradient(-45deg, var(--color-background-soft) 25%, transparent 25%),
     linear-gradient(45deg, transparent 75%, var(--color-background-soft) 75%),
     linear-gradient(-45deg, transparent 75%, var(--color-background-soft) 75%);
   background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  background-position:
+    0 0,
+    0 10px,
+    10px -10px,
+    -10px 0px;
   cursor: crosshair;
   overflow: hidden;
 }
