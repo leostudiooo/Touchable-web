@@ -35,29 +35,6 @@
         </div>
 
         <div class="panel-section">
-          <h2>输入映射</h2>
-          <div class="mapping-controls">
-            <button @click="enablePressure" :disabled="pressureSupported" class="control-btn">
-              启用压感输入
-            </button>
-            <button @click="enableMidi" :disabled="midiEnabled" class="control-btn">
-              连接 MIDI 设备
-            </button>
-            <button @click="showCapabilityTest" class="control-btn info">
-              🔍 检测浏览器能力
-            </button>
-            <button @click="bridgeConnected ? disconnectBridge() : connectBridge()"
-              :class="['control-btn', bridgeConnected ? 'success' : 'warning']"
-              :disabled="bridgeStatus === 'connecting'">
-              {{ bridgeStatus === 'connecting' ? '🔄 连接中...' : bridgeConnected ? '🔗 断开桥接' : '🌉 连接桥接' }}
-            </button>
-            <button @click="resetAll" class="control-btn danger">
-              重置所有设置
-            </button>
-          </div>
-        </div>
-
-        <div class="panel-section">
           <h2>MIDI 映射</h2>
           <div class="midi-mappings">
             <div class="mapping-item">
@@ -117,6 +94,29 @@
                 <option v-for="n in 16" :key="n - 1" :value="n - 1">{{ n }}</option>
               </select>
             </div>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <h2>输入映射</h2>
+          <div class="mapping-controls">
+            <button @click="enablePressure" :disabled="pressureSupported" class="control-btn">
+              启用压感输入
+            </button>
+            <button @click="enableMidi" :disabled="midiEnabled" class="control-btn">
+              连接 MIDI 设备
+            </button>
+            <button @click="showCapabilityTest" class="control-btn info">
+              🔍 检测浏览器能力
+            </button>
+            <button @click="bridgeConnected ? disconnectBridge() : connectBridge()"
+              :class="['control-btn', bridgeConnected ? 'success' : 'warning']"
+              :disabled="bridgeStatus === 'connecting'">
+              {{ bridgeStatus === 'connecting' ? '🔄 连接中...' : bridgeConnected ? '🔗 断开桥接' : '🌉 连接桥接' }}
+            </button>
+            <button @click="resetAll" class="control-btn danger">
+              重置所有设置
+            </button>
           </div>
         </div>
       </aside>
