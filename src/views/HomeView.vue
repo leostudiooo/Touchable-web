@@ -19,6 +19,18 @@
                 {{ pressureSupported ? '✅ 已启用' : '❌ 不支持' }}
               </span>
             </div>
+            <div class="status-item" v-if="pressureSupported">
+              <span class="status-label">Force Touch 屏蔽</span>
+              <label class="force-touch-toggle">
+                <input type="checkbox" v-model="forceTouchBlocked" @change="syncMidiSettings">
+                <span :class="['status-value', forceTouchBlocked ? 'enabled' : 'disabled']">
+                  {{ forceTouchBlocked ? '✅ 已启用' : '❌ 未启用' }}
+                </span>
+              </label>
+            </div>
+            <div class="status-note" v-if="pressureSupported && forceTouchBlocked">
+              <small>⚠️ 屏蔽超过 50% 的压感输入，适用于 Force Touch 设备</small>
+            </div>
             <div class="status-item">
               <span class="status-label">MIDI 输出</span>
               <span :class="['status-value', midiEnabled ? 'enabled' : 'disabled']">
@@ -184,11 +196,6 @@
       <section class="visualization-area">
         <div class="viz-header">
           <h2>实时可视化</h2>
-          <div class="viz-controls">
-            <button @click="toggleVisualization" class="viz-btn">
-              {{ visualizationActive ? '⏸️ 暂停' : '▶️ 开始' }}
-            </button>
-          </div>
         </div>
 
         <!-- 触控区域 -->
@@ -238,9 +245,9 @@ import { CapabilityDetector, type BrowserCapabilities } from '@/utils/Capability
 // 状态管理
 const pressureSupported = ref(false)
 const midiEnabled = ref(false)
-const visualizationActive = ref(true)
 const bridgeConnected = ref(false)
 const browserCapabilities = ref<BrowserCapabilities | null>(null)
+const forceTouchBlocked = ref(false) // Force Touch 屏蔽状态
 
 // 浏览器桥接
 const bridge = new BrowserBridge()
@@ -273,7 +280,11 @@ const midiMappings = ref({
 const syncMidiSettings = () => {
   if (bridgeConnected.value && bridge.isMaster) {
     console.log('🎛️ [主模式] 同步 MIDI 设置到从机')
-    bridge.sendMidiSettings(midiMappings.value)
+    const settingsToSync = {
+      ...midiMappings.value,
+      forceTouchBlocked: forceTouchBlocked.value
+    }
+    bridge.sendMidiSettings(settingsToSync)
   }
 }
 
@@ -295,6 +306,22 @@ const indicatorStyle = computed(() => ({
   opacity: pressureValue.value,
   transform: `translate(-50%, -50%) scale(${0.5 + pressureValue.value * 0.5})`,
 }))
+
+// Force Touch 屏蔽处理函数
+const processPressureValue = (rawPressure: number): number => {
+  if (forceTouchBlocked.value) {
+    // 屏蔽模式：忽略 50% 以上的压感，将 0-0.5 映射到 0-1
+    const clampedPressure = Math.min(rawPressure, 0.5)
+    const mappedPressure = clampedPressure * 2 // 将 0-0.5 映射到 0-1
+    
+    if (rawPressure > 0.5) {
+      console.log(`🚫 Force Touch 屏蔽: 原始压力 ${rawPressure.toFixed(2)} → 映射压力 ${mappedPressure.toFixed(2)}`)
+    }
+    
+    return mappedPressure
+  }
+  return rawPressure
+}
 
 // 方法
 const enablePressure = async () => {
@@ -392,7 +419,16 @@ const setupBridgeListeners = () => {
           const settings = message.data as MidiSettings
           console.log('🎛️ [从模式] 更新 MIDI 设置:', settings)
           // 更新本地 MIDI 映射配置
-          midiMappings.value = { ...settings }
+          midiMappings.value = {
+            pressure: settings.pressure,
+            x: settings.x,
+            y: settings.y
+          }
+          // 更新 Force Touch 屏蔽状态
+          if (typeof settings.forceTouchBlocked !== 'undefined') {
+            forceTouchBlocked.value = settings.forceTouchBlocked
+            console.log('🎛️ [从模式] 更新 Force Touch 屏蔽状态:', settings.forceTouchBlocked)
+          }
         }
         break
       case 'midi':
@@ -538,7 +574,8 @@ const initializePressure = async () => {
             sendMidiData()
           },
           change: (force: number, event: MouseEvent | TouchEvent) => {
-            pressureValue.value = force // 使用 Pressure.js 的真实压感值
+            // 应用 Force Touch 屏蔽逻辑
+            pressureValue.value = processPressureValue(force)
             updatePosition(event)
             sendMidiData()
           },
@@ -572,7 +609,8 @@ const setupFallbackEvents = () => {
   // 鼠标事件
   touchArea.value.addEventListener('mousedown', (event: MouseEvent) => {
     isPressed.value = true
-    pressureValue.value = 0.5 // 默认压力值
+    const rawPressure = 0.5 // 默认压力值
+    pressureValue.value = processPressureValue(rawPressure)
     updatePosition(event)
     sendMidiData()
   })
@@ -595,14 +633,16 @@ const setupFallbackEvents = () => {
     isPressed.value = true
     const touch = event.touches[0]
     // 在支持的设备上尝试获取压感
-    pressureValue.value = touch.force || 0.5
+    const rawPressure = touch.force || 0.5
+    pressureValue.value = processPressureValue(rawPressure)
     updatePosition(event)
     sendMidiData()
   })
 
   touchArea.value.addEventListener('touchmove', (event: TouchEvent) => {
     const touch = event.touches[0]
-    pressureValue.value = touch.force || pressureValue.value
+    const rawPressure = touch.force || pressureValue.value
+    pressureValue.value = processPressureValue(rawPressure)
     updatePosition(event)
     sendMidiData()
   })
@@ -748,6 +788,21 @@ onUnmounted(() => {
 
 .status-value.disabled {
   color: #e74c3c;
+}
+
+/* 状态说明 */
+.status-note {
+  padding: 0.5rem;
+  background: var(--color-background-mute);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+
+.status-note small {
+  color: var(--color-text-mute);
+  font-size: 0.75rem;
+  line-height: 1.3;
 }
 
 /* 控制按钮 */
@@ -946,6 +1001,21 @@ onUnmounted(() => {
 
 .channel-select:hover {
   border-color: #4a90e2;
+}
+
+/* Force Touch 切换开关 */
+.force-touch-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.force-touch-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #4a90e2;
+  cursor: pointer;
 }
 
 /* 深色模式优化 */

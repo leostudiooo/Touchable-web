@@ -31,6 +31,7 @@ export interface MidiSettings {
   pressure: { enabled: boolean; cc: number; channel: number; name: string }
   x: { enabled: boolean; cc: number; channel: number; name: string }
   y: { enabled: boolean; cc: number; channel: number; name: string }
+  forceTouchBlocked: boolean
 }
 
 export interface BridgeMessage {
