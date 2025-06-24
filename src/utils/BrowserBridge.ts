@@ -42,7 +42,37 @@ export class BrowserBridge {
   private messageCallbacks: Array<(message: BridgeMessage) => void> = []
   private mode: BridgeMode = 'auto'
 
-  constructor(private port: number = 8080) {}
+  constructor(
+    private port: number = 8080,
+    mode: BridgeMode = 'auto',
+  ) {
+    this.mode = mode === 'auto' ? this.detectBridgeMode() : mode
+  }
+
+  private detectBridgeMode(): BridgeMode {
+    const userAgent = navigator.userAgent.toLowerCase()
+    const isSafari = /safari/.test(userAgent) && !/chrome/.test(userAgent)
+    const isChrome = /chrome/.test(userAgent)
+
+    // Safari 优先作为主模式（压感输入）
+    if (isSafari) return 'master'
+    // Chrome 作为从模式（MIDI 输出）
+    if (isChrome) return 'slave'
+    // 其他浏览器默认从模式
+    return 'slave'
+  }
+
+  get bridgeMode(): BridgeMode {
+    return this.mode
+  }
+
+  get isMaster(): boolean {
+    return this.mode === 'master'
+  }
+
+  get isSlave(): boolean {
+    return this.mode === 'slave'
+  }
 
   get connected(): boolean {
     return this.isConnected
@@ -99,19 +129,25 @@ export class BrowserBridge {
   }
 
   sendPressureData(pressure: number, x: number, y: number) {
-    this.send({
-      type: 'pressure',
-      data: { pressure, x, y },
-      timestamp: Date.now(),
-    })
+    // 只有主模式才发送压感数据
+    if (this.mode === 'master') {
+      this.send({
+        type: 'pressure',
+        data: { pressure, x, y },
+        timestamp: Date.now(),
+      })
+    }
   }
 
   sendMidiData(cc: number, value: number, channel = 0) {
-    this.send({
-      type: 'midi',
-      data: { cc, value, channel },
-      timestamp: Date.now(),
-    })
+    // 只有从模式才发送 MIDI 数据
+    if (this.mode === 'slave') {
+      this.send({
+        type: 'midi',
+        data: { cc, value, channel },
+        timestamp: Date.now(),
+      })
+    }
   }
 
   private send(message: BridgeMessage) {
@@ -145,6 +181,7 @@ export class BrowserBridge {
       type: 'status',
       data: {
         browser: isSafari ? 'safari' : isChrome ? 'chrome' : 'other',
+        mode: this.mode,
         capabilities: {
           pressure: pressureSupported,
           midi: isChrome || !!navigator.requestMIDIAccess,

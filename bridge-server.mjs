@@ -16,7 +16,10 @@ wss.on('connection', (ws) => {
   ws.on('message', (data) => {
     try {
       const message = JSON.parse(data.toString());
-      console.log(`📨 收到消息: ${message.type} from ${message.data?.browser || 'unknown'}`);
+      const mode = message.data?.mode || 'unknown';
+      const browser = message.data?.browser || 'unknown';
+
+      console.log(`📨 收到消息: ${message.type} from ${browser} [${mode}模式]`);
 
       // 广播给所有其他客户端
       clients.forEach((client) => {
@@ -49,9 +52,10 @@ wss.on('connection', (ws) => {
 
 console.log(`✅ 桥接服务器运行在 ws://localhost:${PORT}`);
 console.log('📝 使用说明:');
-console.log('1. 在 Safari 中打开应用获得压感支持');
-console.log('2. 在 Chrome 中打开应用获得 MIDI 支持');
-console.log('3. 点击"连接桥接"按钮即可实现跨浏览器协作');
+console.log('1. Safari (主模式) - 负责压感输入，发送数据');
+console.log('2. Chrome (从模式) - 负责 MIDI 输出，接收数据');
+console.log('3. 在两个浏览器中都点击"连接桥接"按钮');
+console.log('4. 在 Safari 中操作触控区域，数据会自动同步到 Chrome');
 
 process.on('SIGINT', () => {
   console.log('\n👋 关闭桥接服务器...');

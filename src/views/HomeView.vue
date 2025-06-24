@@ -27,7 +27,9 @@
             </div>
             <div class="status-item" v-if="bridgeConnected">
               <span class="status-label">浏览器桥接</span>
-              <span class="status-value enabled">✅ 已连接</span>
+              <span class="status-value enabled">
+                ✅ 已连接 ({{ bridge.bridgeMode === 'master' ? '主模式' : '从模式' }})
+              </span>
             </div>
           </div>
         </div>
@@ -123,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { BrowserBridge, type BridgeMessage, type PressureData } from '@/utils/BrowserBridge'
 import { CapabilityDetector, type BrowserCapabilities } from '@/utils/CapabilityDetector'
 
@@ -187,6 +189,7 @@ const enablePressure = async () => {
     pressureSupported.value = browserCapabilities.value.pressure
 
     console.log('✅ 压感支持状态:', pressureSupported.value)
+    console.log('🔧 桥接模式:', bridge.bridgeMode)
 
     if (!browserCapabilities.value.pressure && !browserCapabilities.value.midi) {
       // 如果两个功能都不支持，显示指导
@@ -237,22 +240,30 @@ const enablePressure = async () => {
 
 const setupBridgeListeners = () => {
   bridge.onMessage((message: BridgeMessage) => {
-    console.log('📩 收到桥接消息:', message.type, message.data)
-    
+    console.log(`📩 [${bridge.bridgeMode}模式] 收到桥接消息:`, message.type, message.data)
+
     switch (message.type) {
       case 'pressure':
-        const pressureData = message.data as PressureData
-        console.log('🎯 更新压感数据:', pressureData)
-        pressureValue.value = pressureData.pressure
-        xPosition.value = pressureData.x
-        yPosition.value = pressureData.y
-        
-        // 在接收端也更新轨迹（如果可视化激活）
-        addTrail()
+        // 只有从模式才接收压感数据
+        if (bridge.isSlave) {
+          const pressureData = message.data as PressureData
+          console.log('🎯 [从模式] 更新压感数据:', pressureData)
+          pressureValue.value = pressureData.pressure
+          xPosition.value = pressureData.x
+          yPosition.value = pressureData.y
+
+          // 在接收端也更新轨迹（如果可视化激活）
+          addTrail()
+
+          // 从模式下接收到数据后处理 MIDI 输出
+          if (midiEnabled.value) {
+            console.log('🎹 [从模式] 处理 MIDI 输出')
+            // 这里可以添加实际的 MIDI 设备发送逻辑
+          }
+        }
         break
       case 'midi':
-        // MIDI 数据已由另一个浏览器处理
-        console.log('🎹 收到 MIDI 数据:', message.data)
+        console.log('🎹 收到 MIDI 确认:', message.data)
         break
       case 'status':
         console.log('📊 桥接状态更新:', message.data)
@@ -313,8 +324,15 @@ const connectBridge = async () => {
     bridgeStatus.value = connected ? 'connected' : 'disconnected'
 
     if (connected) {
-      console.log('🔗 已连接到双浏览器桥接服务')
+      console.log(`🔗 已连接到双浏览器桥接服务 [${bridge.bridgeMode}模式]`)
       setupBridgeListeners()
+
+      // 根据模式给出不同提示
+      if (bridge.isMaster) {
+        console.log('🎯 Safari 主模式：请在触控区域进行操作，数据将发送到 Chrome')
+      } else {
+        console.log('🎹 Chrome 从模式：等待接收来自 Safari 的压感数据')
+      }
     } else {
       console.log('❌ 无法连接到桥接服务，请确保桥接服务器正在运行')
     }
@@ -481,24 +499,30 @@ const addTrail = () => {
 }
 
 const sendMidiData = () => {
-  // 发送桥接数据（如果已连接）
-  if (bridgeConnected.value) {
-    console.log('📡 发送桥接数据:', { 
-      pressure: pressureValue.value, 
-      x: xPosition.value, 
-      y: yPosition.value 
+  // 发送桥接数据（只有主模式才发送）
+  if (bridgeConnected.value && bridge.isMaster) {
+    console.log('📡 [主模式] 发送桥接数据:', {
+      pressure: pressureValue.value,
+      x: xPosition.value,
+      y: yPosition.value
     })
     bridge.sendPressureData(pressureValue.value, xPosition.value, yPosition.value)
   }
-  
+
   // 发送 MIDI 数据（如果支持）
   if (midiEnabled.value) {
-    // 这里可以添加实际的 MIDI 发送逻辑
-    console.log('🎹 MIDI:', {
+    console.log('🎹 发送 MIDI 数据:', {
       pressure: Math.round(pressureValue.value * 127),
       x: Math.round(xPosition.value * 127),
       y: Math.round(yPosition.value * 127)
     })
+
+    // 如果是桥接从模式，也通过桥接发送 MIDI 确认
+    if (bridgeConnected.value && bridge.isSlave) {
+      bridge.sendMidiData(1, Math.round(pressureValue.value * 127))
+      bridge.sendMidiData(74, Math.round(xPosition.value * 127))
+      bridge.sendMidiData(71, Math.round(yPosition.value * 127))
+    }
   }
 }
 
