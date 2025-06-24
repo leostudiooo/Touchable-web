@@ -122,12 +122,6 @@
         <div class="panel-section">
           <h2>输入映射</h2>
           <div class="mapping-controls">
-            <button @click="enablePressure" :disabled="pressureSupported" class="control-btn">
-              启用压感输入
-            </button>
-            <button @click="enableMidi" :disabled="midiEnabled" class="control-btn">
-              连接 MIDI 设备
-            </button>
             <button @click="showCapabilityTest" class="control-btn info">🔍 检测浏览器能力</button>
             <button @click="bridgeConnected ? disconnectBridge() : connectBridge()"
               :class="['control-btn', bridgeConnected ? 'success' : 'warning']"
@@ -430,30 +424,6 @@ const initializeMidi = async () => {
     console.error('❌ MIDI 连接失败:', error)
   }
   return null
-}
-
-const enableMidi = async () => {
-  try {
-    if (navigator.requestMIDIAccess) {
-      const access = await navigator.requestMIDIAccess()
-      midiEnabled.value = true
-      updateMidiDevices(access)
-      console.log('✅ MIDI 设备已连接')
-
-      // 发送测试 MIDI 消息
-      if (selectedMidiOutput.value) {
-        const output = midiOutputs.value.find(o => o.id === selectedMidiOutput.value)
-        if (output) {
-          // CC 1 (调制轮) = 压力
-          output.send([0xb0, 1, Math.round(pressureValue.value * 127)])
-        }
-      }
-    } else {
-      console.log('❌ 浏览器不支持 Web MIDI API')
-    }
-  } catch (error) {
-    console.error('❌ MIDI 连接失败:', error)
-  }
 }
 
 const resetAll = () => {
