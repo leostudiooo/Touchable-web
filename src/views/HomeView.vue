@@ -135,9 +135,6 @@
         <!-- 触控区域 -->
         <div ref="touchArea" class="touch-area">
           <div class="touch-indicator" :style="indicatorStyle"></div>
-          <div class="touch-trails">
-            <div v-for="(trail, index) in touchTrails" :key="index" class="trail-point" :style="trail.style"></div>
-          </div>
         </div>
 
         <!-- 参数显示 -->
@@ -191,16 +188,6 @@ const xPosition = ref(0.5)
 const yPosition = ref(0.5)
 const isPressed = ref(false)
 
-// 触控轨迹
-interface TrailPoint {
-  style: {
-    left: string
-    top: string
-    opacity: number
-  }
-  id: number
-}
-
 // MIDI 映射配置
 interface MidiMapping {
   enabled: boolean
@@ -208,9 +195,6 @@ interface MidiMapping {
   channel: number
   name: string
 }
-
-const touchTrails = ref<TrailPoint[]>([])
-let trailId = 0
 
 // MIDI 配置
 const midiMappings = ref({
@@ -240,9 +224,10 @@ const touchArea = ref<HTMLElement>()
 
 // 计算属性
 const indicatorStyle = computed(() => ({
-  transform: `translate(${xPosition.value * 100}%, ${yPosition.value * 100}%)`,
+  left: `${xPosition.value * 100}%`,
+  top: `${yPosition.value * 100}%`,
   opacity: pressureValue.value,
-  scale: `${0.5 + pressureValue.value * 0.5}`
+  transform: `translate(-50%, -50%) scale(${0.5 + pressureValue.value * 0.5})`
 }))
 
 // 方法
@@ -328,9 +313,6 @@ const setupBridgeListeners = () => {
           xPosition.value = pressureData.x
           yPosition.value = pressureData.y
 
-          // 在接收端也更新轨迹（如果可视化激活）
-          addTrail()
-
           // 从模式下接收到数据后处理 MIDI 输出
           if (midiEnabled.value) {
             console.log('🎹 [从模式] 处理 MIDI 输出')
@@ -397,7 +379,6 @@ const resetAll = () => {
   xPosition.value = 0.5
   yPosition.value = 0.5
   isPressed.value = false
-  touchTrails.value = []
   console.log('🔄 已重置所有设置')
 }
 
@@ -486,13 +467,11 @@ const initializePressure = async () => {
         start: (event: MouseEvent | TouchEvent) => {
           isPressed.value = true
           updatePosition(event)
-          addTrail()
           sendMidiData()
         },
         change: (force: number, event: MouseEvent | TouchEvent) => {
           pressureValue.value = force // 使用 Pressure.js 的真实压感值
           updatePosition(event)
-          addTrail()
           sendMidiData()
         },
         end: () => {
@@ -525,14 +504,12 @@ const setupFallbackEvents = () => {
     isPressed.value = true
     pressureValue.value = 0.5 // 默认压力值
     updatePosition(event)
-    addTrail()
     sendMidiData()
   })
 
   touchArea.value.addEventListener('mousemove', (event: MouseEvent) => {
     if (isPressed.value) {
       updatePosition(event)
-      addTrail()
       sendMidiData()
     }
   })
@@ -550,7 +527,6 @@ const setupFallbackEvents = () => {
     // 在支持的设备上尝试获取压感
     pressureValue.value = touch.force || 0.5
     updatePosition(event)
-    addTrail()
     sendMidiData()
   })
 
@@ -558,7 +534,6 @@ const setupFallbackEvents = () => {
     const touch = event.touches[0]
     pressureValue.value = touch.force || pressureValue.value
     updatePosition(event)
-    addTrail()
     sendMidiData()
   })
 
@@ -567,24 +542,6 @@ const setupFallbackEvents = () => {
     pressureValue.value = 0
     sendMidiData()
   })
-}
-
-const addTrail = () => {
-  if (!visualizationActive.value) return
-
-  touchTrails.value.push({
-    id: trailId++,
-    style: {
-      left: `${xPosition.value * 100}%`,
-      top: `${yPosition.value * 100}%`,
-      opacity: pressureValue.value,
-    }
-  })
-
-  // 限制轨迹数量
-  if (touchTrails.value.length > 20) {
-    touchTrails.value.shift()
-  }
 }
 
 const sendMidiData = () => {
@@ -985,37 +942,6 @@ onUnmounted(() => {
   border-radius: 50%;
   pointer-events: none;
   transform-origin: center;
-}
-
-.touch-trails {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.trail-point {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: #e74c3c;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  animation: fade-out 2s ease-out forwards;
-}
-
-@keyframes fade-out {
-  0% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.5);
-  }
 }
 
 /* 参数显示 */
