@@ -6,7 +6,16 @@
       <p>将触控设备转换为 MIDI 控制器</p>
     </header>
 
-    <!-- 主要内容区 -->
+    <!-- 主要内容区         } else if (!browserCapabilities.value.pressure || !browserCapabilities.value.midi) {
+      // 如果只缺少一个功能，尝试桥接
+      await connectBridge()
+    } else {lse if (!browserCapabilities.value.pressure || !browserCapabilities.value.midi) {
+      // 如果只缺少一个功能，尝试桥接
+      await connectBridge()lse if (!browserCapabilities.value.pressure || !browserCapabilities.value.midi) {
+      // 如果只缺少一个功能，尝试桥接
+      console.log('Bridge detection: missing capabilities, trying to connect')
+      await connectBridge()    console.log('检测到部分功能缺失，尝试桥接')     console.log('检测到部分功能缺失，尝试桥接...')   // 如果只缺少一个功能，尝试桥接
+      console.log('🔧 检测到部分功能缺失，尝试桥接...')-->
     <main class="main-content">
       <!-- 左侧控制面板 -->
       <aside class="control-panel">
@@ -44,11 +53,9 @@
             <button @click="showCapabilityTest" class="control-btn info">
               🔍 检测浏览器能力
             </button>
-            <button 
-              @click="bridgeConnected ? disconnectBridge() : connectBridge()" 
+            <button @click="bridgeConnected ? disconnectBridge() : connectBridge()"
               :class="['control-btn', bridgeConnected ? 'success' : 'warning']"
-              :disabled="bridgeStatus === 'connecting'"
-            >
+              :disabled="bridgeStatus === 'connecting'">
               {{ bridgeStatus === 'connecting' ? '🔄 连接中...' : bridgeConnected ? '🔗 断开桥接' : '🌉 连接桥接' }}
             </button>
             <button @click="resetAll" class="control-btn danger">
@@ -183,6 +190,7 @@ const enablePressure = async () => {
       await connectBridge()
     } else if (!browserCapabilities.value.pressure || !browserCapabilities.value.midi) {
       // 如果只缺少一个功能，尝试桥接
+      console.log('� 检测到部分功能缺失，尝试桥接...')
       await connectBridge()
     } else {
       // 单浏览器方案
@@ -271,14 +279,14 @@ const connectBridge = async () => {
     const connected = await bridge.connect()
     bridgeConnected.value = connected
     bridgeStatus.value = connected ? 'connected' : 'disconnected'
-    
+
     if (connected) {
       console.log('🔗 已连接到双浏览器桥接服务')
       setupBridgeListeners()
     } else {
       console.log('❌ 无法连接到桥接服务，请确保桥接服务器正在运行')
     }
-    
+
     return connected
   } catch (error) {
     console.error('❌ 桥接连接失败:', error)

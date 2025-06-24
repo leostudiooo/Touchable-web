@@ -36,8 +36,19 @@ export class BrowserBridge {
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectInterval = 2000
+  private messageCallbacks: Array<(message: BridgeMessage) => void> = []
 
   constructor(private port: number = 8080) {}
+
+  get connected(): boolean {
+    return this.isConnected
+  }
+
+  get status(): string {
+    if (this.isConnected) return 'connected'
+    if (this.reconnectAttempts > 0) return 'reconnecting'
+    return 'disconnected'
+  }
 
   async connect(): Promise<boolean> {
     try {
@@ -106,15 +117,32 @@ export class BrowserBridge {
   }
 
   private sendStatus() {
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    const isChrome = /chrome/i.test(navigator.userAgent)
+    const userAgent = navigator.userAgent.toLowerCase()
+    const platform = navigator.platform.toLowerCase()
+
+    const isSafari = /safari/.test(userAgent) && !/chrome/.test(userAgent)
+    const isChrome = /chrome/.test(userAgent)
+    const isMac = /mac/.test(platform) || /iphone|ipad/.test(userAgent)
+    const isIOS = /iphone|ipad/.test(userAgent)
+
+    // 压感支持检测
+    let pressureSupported = false
+    if (isSafari && (isMac || isIOS)) {
+      pressureSupported = true
+    } else if (isChrome) {
+      // Chrome 在某些设备上支持压感（数位板、触屏设备）
+      const hasTouchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+      const hasPointerEvents = 'onpointerdown' in window
+      const isSurface = /surface/.test(userAgent)
+      pressureSupported = hasTouchSupport || hasPointerEvents || isSurface
+    }
 
     this.send({
       type: 'status',
       data: {
         browser: isSafari ? 'safari' : isChrome ? 'chrome' : 'other',
         capabilities: {
-          pressure: isSafari,
+          pressure: pressureSupported,
           midi: isChrome || !!navigator.requestMIDIAccess,
         },
       },
@@ -123,15 +151,25 @@ export class BrowserBridge {
   }
 
   onMessage(callback: (message: BridgeMessage) => void) {
+    this.messageCallbacks.push(callback)
+
     if (this.ws) {
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data)
-          callback(message)
+          // 通知所有回调
+          this.messageCallbacks.forEach((cb) => cb(message))
         } catch (error) {
           console.error('❌ 解析桥接消息失败:', error)
         }
       }
+    }
+  }
+
+  removeMessageCallback(callback: (message: BridgeMessage) => void) {
+    const index = this.messageCallbacks.indexOf(callback)
+    if (index > -1) {
+      this.messageCallbacks.splice(index, 1)
     }
   }
 
