@@ -17,7 +17,6 @@
 - **压感输入支持** - 真实压力检测，支持 MacBook 触控板、触屏设备和数位板
 - **MIDI 输出** - 实时转换为标准 MIDI CC 消息，兼容所有 DAW 软件
 - **实时可视化** - 直观显示压力值、坐标位置和参数变化
-- **PWA 应用** - 可安装到桌面，离线使用，类原生体验
 
 ### 🌉 跨浏览器桥接
 
@@ -56,13 +55,12 @@ git clone https://github.com/yourusername/Touchable-web.git
 cd Touchable-web
 
 # 安装依赖
-npm install
+pnpm install
 
 # 启动开发服务器
-npm run dev
+pnpm run dev
 
-# 访问应用
-open http://localhost:5173
+# 打开浏览器访问 http://localhost:5173
 ```
 
 ### 桥接服务器 (可选)
@@ -71,7 +69,7 @@ open http://localhost:5173
 
 ```bash
 # 启动桥接服务器
-node bridge-server.mjs
+pnpm bridge
 
 # 服务器运行在 ws://localhost:8080
 ```
