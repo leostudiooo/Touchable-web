@@ -593,6 +593,11 @@ onUnmounted(() => {
   background: var(--color-background);
   color: var(--color-text);
   overflow: hidden;
+  /* 禁用页面选择功能 */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 /* 顶部标题栏 */
