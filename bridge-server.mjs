@@ -19,7 +19,13 @@ wss.on('connection', (ws) => {
       const mode = message.data?.mode || 'unknown';
       const browser = message.data?.browser || 'unknown';
 
-      console.log(`📨 收到消息: ${message.type} from ${browser} [${mode}模式]`);
+      // 特别处理 MIDI 设置消息
+      if (message.type === 'midi-settings') {
+        console.log(`🎛️ MIDI设置同步: ${browser} [${mode}模式] -> 从机`);
+        console.log('   设置详情:', JSON.stringify(message.data, null, 2));
+      } else {
+        console.log(`📨 收到消息: ${message.type} from ${browser} [${mode}模式]`);
+      }
 
       // 广播给所有其他客户端
       clients.forEach((client) => {

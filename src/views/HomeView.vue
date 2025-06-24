@@ -61,16 +61,61 @@
           <h2>MIDI 映射</h2>
           <div class="midi-mappings">
             <div class="mapping-item">
-              <span>压力 → CC 1 (调制轮)</span>
+              <div class="mapping-config">
+                <label>
+                  <input type="checkbox" v-model="midiMappings.pressure.enabled" class="mapping-checkbox"
+                    @change="syncMidiSettings">
+                  压力 → CC
+                </label>
+                <div class="mapping-input-row">
+                  <input type="number" v-model="midiMappings.pressure.cc" min="0" max="127" class="cc-input"
+                    :disabled="!midiMappings.pressure.enabled" @change="syncMidiSettings">
+                  <input type="text" v-model="midiMappings.pressure.name" class="name-input"
+                    :disabled="!midiMappings.pressure.enabled" placeholder="名称" @change="syncMidiSettings">
+                </div>
+              </div>
               <span class="mapping-value">{{ Math.round(pressureValue * 127) }}</span>
             </div>
+
             <div class="mapping-item">
-              <span>X 坐标 → CC 74 (滤波器)</span>
+              <div class="mapping-config">
+                <label>
+                  <input type="checkbox" v-model="midiMappings.x.enabled" class="mapping-checkbox"
+                    @change="syncMidiSettings">
+                  X 坐标 → CC
+                </label>
+                <div class="mapping-input-row">
+                  <input type="number" v-model="midiMappings.x.cc" min="0" max="127" class="cc-input"
+                    :disabled="!midiMappings.x.enabled" @change="syncMidiSettings">
+                  <input type="text" v-model="midiMappings.x.name" class="name-input"
+                    :disabled="!midiMappings.x.enabled" placeholder="名称" @change="syncMidiSettings">
+                </div>
+              </div>
               <span class="mapping-value">{{ Math.round(xPosition * 127) }}</span>
             </div>
+
             <div class="mapping-item">
-              <span>Y 坐标 → CC 71 (共鸣)</span>
+              <div class="mapping-config">
+                <label>
+                  <input type="checkbox" v-model="midiMappings.y.enabled" class="mapping-checkbox"
+                    @change="syncMidiSettings">
+                  Y 坐标 → CC
+                </label>
+                <div class="mapping-input-row">
+                  <input type="number" v-model="midiMappings.y.cc" min="0" max="127" class="cc-input"
+                    :disabled="!midiMappings.y.enabled" @change="syncMidiSettings">
+                  <input type="text" v-model="midiMappings.y.name" class="name-input"
+                    :disabled="!midiMappings.y.enabled" placeholder="名称" @change="syncMidiSettings">
+                </div>
+              </div>
               <span class="mapping-value">{{ Math.round(yPosition * 127) }}</span>
+            </div>
+
+            <div class="midi-channel">
+              <label>MIDI 通道:</label>
+              <select v-model="midiMappings.pressure.channel" class="channel-select" @change="updateAllChannels">
+                <option v-for="n in 16" :key="n - 1" :value="n - 1">{{ n }}</option>
+              </select>
             </div>
           </div>
         </div>
@@ -126,7 +171,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { BrowserBridge, type BridgeMessage, type PressureData } from '@/utils/BrowserBridge'
+import { BrowserBridge, type BridgeMessage, type PressureData, type MidiSettings } from '@/utils/BrowserBridge'
 import { CapabilityDetector, type BrowserCapabilities } from '@/utils/CapabilityDetector'
 
 // 状态管理
@@ -156,8 +201,39 @@ interface TrailPoint {
   id: number
 }
 
+// MIDI 映射配置
+interface MidiMapping {
+  enabled: boolean
+  cc: number
+  channel: number
+  name: string
+}
+
 const touchTrails = ref<TrailPoint[]>([])
 let trailId = 0
+
+// MIDI 配置
+const midiMappings = ref({
+  pressure: { enabled: true, cc: 1, channel: 0, name: '调制轮' } as MidiMapping,
+  x: { enabled: true, cc: 74, channel: 0, name: '滤波器' } as MidiMapping,
+  y: { enabled: true, cc: 71, channel: 0, name: '共鸣' } as MidiMapping,
+})
+
+// 监听 MIDI 设置变化并同步到从机
+const syncMidiSettings = () => {
+  if (bridgeConnected.value && bridge.isMaster) {
+    console.log('🎛️ [主模式] 同步 MIDI 设置到从机')
+    bridge.sendMidiSettings(midiMappings.value)
+  }
+}
+
+// 更新所有通道
+const updateAllChannels = () => {
+  const channel = midiMappings.value.pressure.channel
+  midiMappings.value.x.channel = channel
+  midiMappings.value.y.channel = channel
+  syncMidiSettings()
+}
 
 // DOM 引用
 const touchArea = ref<HTMLElement>()
@@ -258,8 +334,17 @@ const setupBridgeListeners = () => {
           // 从模式下接收到数据后处理 MIDI 输出
           if (midiEnabled.value) {
             console.log('🎹 [从模式] 处理 MIDI 输出')
-            // 这里可以添加实际的 MIDI 设备发送逻辑
+            sendMidiData()
           }
+        }
+        break
+      case 'midi-settings':
+        // 只有从模式才接收 MIDI 设置
+        if (bridge.isSlave) {
+          const settings = message.data as MidiSettings
+          console.log('🎛️ [从模式] 更新 MIDI 设置:', settings)
+          // 更新本地 MIDI 映射配置
+          midiMappings.value = { ...settings }
         }
         break
       case 'midi':
@@ -330,6 +415,10 @@ const connectBridge = async () => {
       // 根据模式给出不同提示
       if (bridge.isMaster) {
         console.log('🎯 Safari 主模式：请在触控区域进行操作，数据将发送到 Chrome')
+        // 主机连接后立即同步当前 MIDI 设置到从机
+        setTimeout(() => {
+          syncMidiSettings()
+        }, 500) // 稍微延迟确保从机已连接
       } else {
         console.log('🎹 Chrome 从模式：等待接收来自 Safari 的压感数据')
       }
@@ -692,23 +781,150 @@ onUnmounted(() => {
 .midi-mappings {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
 .mapping-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem;
   background: var(--color-background);
   border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.mapping-item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: #4a90e2;
+}
+
+.mapping-config {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mapping-config label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: var(--color-heading);
+  font-size: 0.9rem;
+}
+
+.mapping-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: #4a90e2;
+  cursor: pointer;
+}
+
+.mapping-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.cc-input,
+.name-input {
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
-  font-size: 0.8rem;
+  background: var(--color-background-soft);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  transition: border-color 0.2s ease;
+}
+
+.cc-input:focus,
+.name-input:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.cc-input:disabled,
+.name-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--color-background-mute);
+}
+
+.cc-input {
+  width: 70px;
+}
+
+.name-input {
+  flex: 1;
+}
+
+.mapping-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .mapping-value {
-  font-weight: bold;
-  color: #4a90e2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #4a90e2, #357abd);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  min-width: 50px;
+  box-shadow: 0 2px 4px rgba(74, 144, 226, 0.3);
+}
+
+.midi-channel {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.midi-channel label {
+  font-weight: 500;
+  color: var(--color-heading);
+  font-size: 0.9rem;
+}
+
+.channel-select {
+  padding: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.channel-select:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.channel-select:hover {
+  border-color: #4a90e2;
+}
+
+/* 深色模式优化 */
+@media (prefers-color-scheme: dark) {
+  .mapping-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .mapping-value {
+    box-shadow: 0 2px 4px rgba(74, 144, 226, 0.4);
+  }
 }
 
 /* 右侧可视化区域 */

@@ -27,9 +27,15 @@ export interface StatusData {
   }
 }
 
+export interface MidiSettings {
+  pressure: { enabled: boolean; cc: number; channel: number; name: string }
+  x: { enabled: boolean; cc: number; channel: number; name: string }
+  y: { enabled: boolean; cc: number; channel: number; name: string }
+}
+
 export interface BridgeMessage {
-  type: 'pressure' | 'position' | 'midi' | 'status'
-  data: PressureData | MidiData | StatusData
+  type: 'pressure' | 'position' | 'midi' | 'status' | 'midi-settings'
+  data: PressureData | MidiData | StatusData | MidiSettings
   timestamp: number
 }
 
@@ -189,6 +195,17 @@ export class BrowserBridge {
       },
       timestamp: Date.now(),
     })
+  }
+
+  sendMidiSettings(settings: MidiSettings) {
+    if (!this.isMaster) return // 只有主机能发送设置
+
+    this.send({
+      type: 'midi-settings',
+      data: settings,
+      timestamp: Date.now(),
+    })
+    console.log('🎛️ [主模式] 发送 MIDI 设置:', settings)
   }
 
   onMessage(callback: (message: BridgeMessage) => void) {
